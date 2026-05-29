@@ -1,0 +1,1292 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Design Evaluation</title>
+<style>
+body {
+  font-family: Arial;
+  margin: 10px 14px;
+  background: #f5f6f7;
+  position: relative;
+  font-size: 16px;
+}
+h1 {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0 0 4px 0;
+  line-height: 1.1;
+}
+h2 {
+  font-size: 28px;
+}
+h3 {
+  font-size: 20px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+#tab_dashboard { position: relative; }
+.tabs { display: flex; gap: 6px; margin: 4px 0 0 0; flex-wrap: wrap; }
+.tab-btn {
+  padding: 5px 13px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  background: #f7f7f7;
+  font-size: 17px;
+}
+.tab-btn.active { background: #444444; color: white; border-color: #444444; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.controls { margin-top: 4px; }
+.controls select { padding: 5px 8px; width: 360px; max-width: 100%; font-size: 17px; }
+.design-choices {
+  margin-top: 4px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 17px;
+}
+
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+#tab_dashboard table { margin-top: 8px; }
+#abbrevLegend { margin-top: 8px; }
+th, td {
+  border: 1px solid #ccc;
+  padding: 9px 10px;
+  text-align: right;
+  width: 16.6%;
+  font-size: 19px;
+}
+th { text-align: left; background: #eeeeee; font-weight: 600; }
+.form-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 10px;
+  margin: 7px 0;
+  align-items: center;
+  font-size: 18px;
+}
+.form-row-inline { display: flex; align-items: center; gap: 10px; margin: 11px 0; font-size: 18px; }
+.form-row-inline label { margin: 0; }
+input[type="number"] { width: 130px; padding: 7px; border: 1px solid #ccc; font-size: 17px; }
+input[type="checkbox"] { accent-color: #444444; width: 18px; height: 18px; }
+input[type="text"] { outline: none; }
+input[type="text"]:focus { border-bottom: 2px solid #444444; }
+select { width: 240px; padding: 7px; border: 1px solid #ccc; font-size: 17px; }
+.small { font-size: 16px; color: #666; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.box { border: 1px solid #ccc; background: #ffffff; padding: 14px; }
+
+.design-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.design-grid .box {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.design-grid input[type="number"],
+.design-grid select {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.fuel-select {
+  width: 180px;
+  max-width: 100%;
+}
+
+@media (max-width: 1800px) {
+  .design-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .design-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+tr.base-row th, tr.base-row td { background: #eeeeee; }
+
+.battery-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 10px;
+  margin: 7px 0;
+  align-items: center;
+  font-size: 18px;
+}
+
+.battery-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.battery-controls input[type="number"] {
+  width: 90px;
+}
+
+.transit-sub {
+  padding-left: 0;
+  border-left: none;
+  margin: 4px 0;
+}
+
+.transit-sub label {
+  padding-left: 14px;
+  border-left: 3px solid #e0e0e0;
+  color: #666;
+  font-size: 16px;
+}
+
+.transit-sub input[type="number"] {
+  width: 130px;
+}
+
+</style>
+</head>
+<body>
+
+<div id="topbarLeft"></div>
+<div id="tab_dashboard" class="tab-content"></div>
+<div id="designTabs"></div>
+
+<script>
+const DATA = {"scenarios": {"A": {"name": "Scenario A: DP-intensive, higher Hs", "total_hours": 8760, "share_transit": 0.3, "share_dp": 0.6, "share_port": 0.1, "hs_mean": 2.5, "hs_std": 0.8}, "B": {"name": "Scenario B: Transit-oriented, lower Hs", "total_hours": 8760, "share_transit": 0.55, "share_dp": 0.25, "share_port": 0.2, "hs_mean": 2.0, "hs_std": 0.6}}, "designs": {"BASE": {"name": "Baseline vessel", "dwt_t": 2000, "gt_t": 5943, "power": {"DP": 861, "Standby": 570, "Port": 258, "Transit": 1733}, "steel_weight_t": 800, "n_gensets": 4, "n_thrusters": 5, "battery_included": true, "battery_capacity_kwh": 745, "dp_class": 2, "loa_m": 85.5, "beam_m": 19.5, "draft_m": 5.6, "dp_capacity_kw": 3614.0, "total_generator_kw": 5560, "thruster_power_fraction": 0.65, "h_lim_dp": 2.5, "technician_capacity": 60, "crane_capacity_t": 6, "has_gangway": true, "supports_shore_power": true, "transit_propulsion_kw": 1314}, "D1": {"name": "Design 1 - reduced capacity", "dwt_t": 2000, "gt_t": 5943, "power": {"DP": 790, "Standby": 523, "Port": 237, "Transit": 1698}, "steel_weight_t": 770, "n_gensets": 4, "n_thrusters": 5, "battery_included": true, "battery_capacity_kwh": 600, "dp_class": 2, "loa_m": 85.5, "beam_m": 19.5, "draft_m": 5.6, "dp_capacity_kw": 3315.0, "total_generator_kw": 5100, "thruster_power_fraction": 0.65, "h_lim_dp": 2.5, "technician_capacity": 50, "crane_capacity_t": 6, "has_gangway": true, "supports_shore_power": true, "transit_propulsion_kw": 1314}, "D2": {"name": "Design 2 - DP3 variant", "dwt_t": 2100, "gt_t": 6200, "power": {"DP": 960, "Standby": 636, "Port": 288, "Transit": 1792}, "steel_weight_t": 860, "n_gensets": 5, "n_thrusters": 6, "battery_included": true, "battery_capacity_kwh": 1000, "dp_class": 3, "loa_m": 87.0, "beam_m": 20.0, "draft_m": 5.7, "dp_capacity_kw": 4030.0, "total_generator_kw": 6200, "thruster_power_fraction": 0.65, "h_lim_dp": 2.5, "technician_capacity": 70, "crane_capacity_t": 10, "has_gangway": true, "supports_shore_power": true, "transit_propulsion_kw": 1325}, "D3": {"name": "Design 3 - high capacity", "dwt_t": 2300, "gt_t": 6800, "power": {"DP": 1007, "Standby": 666, "Port": 302, "Transit": 1829}, "steel_weight_t": 900, "n_gensets": 5, "n_thrusters": 6, "battery_included": true, "battery_capacity_kwh": 1250, "dp_class": 2, "loa_m": 89.0, "beam_m": 20.5, "draft_m": 5.8, "dp_capacity_kw": 4225.0, "total_generator_kw": 6500, "thruster_power_fraction": 0.65, "h_lim_dp": 2.5, "technician_capacity": 85, "crane_capacity_t": 20, "has_gangway": true, "supports_shore_power": true, "transit_propulsion_kw": 1340}}, "fuels": {"MGO": {"label": "MGO (diesel)", "emission_factor": 3.206}, "VLSFO": {"label": "VLSFO", "emission_factor": 3.188}, "LNG": {"label": "LNG", "emission_factor": 2.75}}, "contracts": [{"id": "C001", "category": "standard", "technician_capacity_req": 59, "DP_class_req": 2, "Hs_req": 1.6159859416247127, "crane_capacity_req": 4.029378886807699, "gangway_req": false, "draft_max": 6.165815378935673, "shore_power_req": false, "CIO_index_max": null}, {"id": "C002", "category": "standard", "technician_capacity_req": 56, "DP_class_req": 2, "Hs_req": 1.5370303355761248, "crane_capacity_req": 5.23961841853673, "gangway_req": false, "draft_max": 6.39170806100202, "shore_power_req": false, "CIO_index_max": null}, {"id": "C003", "category": "standard", "technician_capacity_req": 61, "DP_class_req": 2, "Hs_req": 1.66721054906595, "crane_capacity_req": 5.089082581872844, "gangway_req": true, "draft_max": 6.585766315926513, "shore_power_req": false, "CIO_index_max": null}, {"id": "C004", "category": "standard", "technician_capacity_req": 48, "DP_class_req": 2, "Hs_req": 1.5144622495450262, "crane_capacity_req": 11.825465223191976, "gangway_req": false, "draft_max": 7.176590830553855, "shore_power_req": false, "CIO_index_max": null}, {"id": "C005", "category": "standard", "technician_capacity_req": 48, "DP_class_req": 2, "Hs_req": 1.340726235315591, "crane_capacity_req": 5.131631525407075, "gangway_req": false, "draft_max": 6.013635477863534, "shore_power_req": false, "CIO_index_max": null}, {"id": "C006", "category": "standard", "technician_capacity_req": 54, "DP_class_req": 2, "Hs_req": 2.2751130323970044, "crane_capacity_req": 5.270011485484437, "gangway_req": true, "draft_max": 6.340460343242313, "shore_power_req": false, "CIO_index_max": null}, {"id": "C007", "category": "standard", "technician_capacity_req": 60, "DP_class_req": 2, "Hs_req": 2.105417417336863, "crane_capacity_req": 4.325706508086601, "gangway_req": false, "draft_max": 5.821755140622752, "shore_power_req": false, "CIO_index_max": null}, {"id": "C008", "category": "standard", "technician_capacity_req": 39, "DP_class_req": 2, "Hs_req": 2.1329226478551115, "crane_capacity_req": 4.190278137030518, "gangway_req": false, "draft_max": 6.342141056385474, "shore_power_req": false, "CIO_index_max": null}, {"id": "C009", "category": "standard", "technician_capacity_req": 56, "DP_class_req": 2, "Hs_req": 2.3367193340729764, "crane_capacity_req": 5.714785528754293, "gangway_req": true, "draft_max": 5.490582028322832, "shore_power_req": false, "CIO_index_max": null}, {"id": "C010", "category": "standard", "technician_capacity_req": 39, "DP_class_req": 2, "Hs_req": 1.5629782630954525, "crane_capacity_req": 4.94364841219808, "gangway_req": false, "draft_max": 6.7076827976673865, "shore_power_req": false, "CIO_index_max": null}, {"id": "C011", "category": "standard", "technician_capacity_req": 52, "DP_class_req": 2, "Hs_req": 1.7932678174541175, "crane_capacity_req": 8.608320708821921, "gangway_req": true, "draft_max": 5.884341997402835, "shore_power_req": false, "CIO_index_max": null}, {"id": "C012", "category": "standard", "technician_capacity_req": 61, "DP_class_req": 2, "Hs_req": 2.1358729495494653, "crane_capacity_req": 4.946021012773508, "gangway_req": false, "draft_max": 5.390457161923134, "shore_power_req": true, "CIO_index_max": null}, {"id": "C013", "category": "standard", "technician_capacity_req": 36, "DP_class_req": 2, "Hs_req": 0.9452921145307065, "crane_capacity_req": 4.973102467576366, "gangway_req": false, "draft_max": 6.4278503030346625, "shore_power_req": false, "CIO_index_max": null}, {"id": "C014", "category": "standard", "technician_capacity_req": 35, "DP_class_req": 2, "Hs_req": 1.3462493070355628, "crane_capacity_req": 5.704184882474437, "gangway_req": true, "draft_max": 6.635182407821109, "shore_power_req": false, "CIO_index_max": null}, {"id": "C015", "category": "standard", "technician_capacity_req": 43, "DP_class_req": 2, "Hs_req": 1.1166396622908101, "crane_capacity_req": 5.339605726812823, "gangway_req": false, "draft_max": 7.007073544123469, "shore_power_req": false, "CIO_index_max": null}, {"id": "C016", "category": "standard", "technician_capacity_req": 38, "DP_class_req": 2, "Hs_req": 1.4239137435857114, "crane_capacity_req": 5.701066747548747, "gangway_req": true, "draft_max": 7.0719004544219475, "shore_power_req": false, "CIO_index_max": null}, {"id": "C017", "category": "standard", "technician_capacity_req": 38, "DP_class_req": 2, "Hs_req": 1.2533315738234485, "crane_capacity_req": 5.5810905680886425, "gangway_req": true, "draft_max": 5.790807911368867, "shore_power_req": false, "CIO_index_max": null}, {"id": "C018", "category": "standard", "technician_capacity_req": 69, "DP_class_req": 2, "Hs_req": 2.1831137862973966, "crane_capacity_req": 5.448645659965598, "gangway_req": false, "draft_max": 5.259397610421422, "shore_power_req": false, "CIO_index_max": null}, {"id": "C019", "category": "standard", "technician_capacity_req": 35, "DP_class_req": 2, "Hs_req": 1.3339575619157578, "crane_capacity_req": 13.131960461575288, "gangway_req": false, "draft_max": 6.3641695718714155, "shore_power_req": false, "CIO_index_max": null}, {"id": "C020", "category": "standard", "technician_capacity_req": 35, "DP_class_req": 1, "Hs_req": 0.9507407905021709, "crane_capacity_req": 5.278164712883732, "gangway_req": true, "draft_max": 6.46919298510156, "shore_power_req": false, "CIO_index_max": null}, {"id": "C021", "category": "standard", "technician_capacity_req": 54, "DP_class_req": 2, "Hs_req": 1.177083140501678, "crane_capacity_req": 5.703093522241807, "gangway_req": true, "draft_max": 6.842861898574762, "shore_power_req": false, "CIO_index_max": null}, {"id": "C022", "category": "standard", "technician_capacity_req": 42, "DP_class_req": 2, "Hs_req": 1.721983325142972, "crane_capacity_req": 4.927009911795532, "gangway_req": true, "draft_max": 5.732683581616418, "shore_power_req": false, "CIO_index_max": null}, {"id": "C023", "category": "standard", "technician_capacity_req": 68, "DP_class_req": 3, "Hs_req": 2.5112158117644143, "crane_capacity_req": 5.983601045024095, "gangway_req": false, "draft_max": 5.593483555871583, "shore_power_req": false, "CIO_index_max": null}, {"id": "C024", "category": "standard", "technician_capacity_req": 56, "DP_class_req": 2, "Hs_req": 2.4408045017526754, "crane_capacity_req": 4.379104480452601, "gangway_req": true, "draft_max": 6.7694144855440666, "shore_power_req": false, "CIO_index_max": null}, {"id": "C025", "category": "standard", "technician_capacity_req": 36, "DP_class_req": 2, "Hs_req": 2.0774946127955456, "crane_capacity_req": 5.5859960768134265, "gangway_req": false, "draft_max": 6.305243703230048, "shore_power_req": false, "CIO_index_max": null}, {"id": "C026", "category": "standard", "technician_capacity_req": 54, "DP_class_req": 2, "Hs_req": 2.364025868889667, "crane_capacity_req": 3.9698967393813867, "gangway_req": true, "draft_max": 5.76818701821915, "shore_power_req": false, "CIO_index_max": null}, {"id": "C027", "category": "standard", "technician_capacity_req": 46, "DP_class_req": 2, "Hs_req": 1.330938973679681, "crane_capacity_req": 5.218378895556651, "gangway_req": true, "draft_max": 6.6412883377197565, "shore_power_req": false, "CIO_index_max": null}, {"id": "C028", "category": "standard", "technician_capacity_req": 50, "DP_class_req": 2, "Hs_req": 1.9632046479593577, "crane_capacity_req": 5.1072965924500595, "gangway_req": false, "draft_max": 6.20220493966915, "shore_power_req": false, "CIO_index_max": null}, {"id": "C029", "category": "standard", "technician_capacity_req": 52, "DP_class_req": 2, "Hs_req": 1.5488443888805488, "crane_capacity_req": 6.0, "gangway_req": false, "draft_max": 5.809262119409433, "shore_power_req": false, "CIO_index_max": null}, {"id": "C030", "category": "standard", "technician_capacity_req": 35, "DP_class_req": 1, "Hs_req": 1.0081422550394128, "crane_capacity_req": 4.762549697353835, "gangway_req": false, "draft_max": 5.750848148618899, "shore_power_req": false, "CIO_index_max": null}, {"id": "C031", "category": "standard", "technician_capacity_req": 35, "DP_class_req": 2, "Hs_req": 1.1949541188091612, "crane_capacity_req": 4.145362965186021, "gangway_req": false, "draft_max": 7.349174880131997, "shore_power_req": false, "CIO_index_max": null}, {"id": "C032", "category": "standard", "technician_capacity_req": 59, "DP_class_req": 2, "Hs_req": 1.8904241155454458, "crane_capacity_req": 4.979050625927182, "gangway_req": true, "draft_max": 7.198579019729536, "shore_power_req": false, "CIO_index_max": null}, {"id": "C033", "category": "standard", "technician_capacity_req": 50, "DP_class_req": 2, "Hs_req": 1.9301845775228372, "crane_capacity_req": 5.119706221290375, "gangway_req": true, "draft_max": 6.173408299273925, "shore_power_req": true, "CIO_index_max": null}, {"id": "C034", "category": "standard", "technician_capacity_req": 56, "DP_class_req": 2, "Hs_req": 1.7309131879973227, "crane_capacity_req": 5.29325759660108, "gangway_req": true, "draft_max": 6.156254569935795, "shore_power_req": false, "CIO_index_max": null}, {"id": "C035", "category": "standard", "technician_capacity_req": 40, "DP_class_req": 2, "Hs_req": 1.5918939044139966, "crane_capacity_req": 6.0, "gangway_req": false, "draft_max": 6.09681336551409, "shore_power_req": false, "CIO_index_max": null}, {"id": "C036", "category": "standard", "technician_capacity_req": 62, "DP_class_req": 2, "Hs_req": 1.5759627995064007, "crane_capacity_req": 11.960286806783222, "gangway_req": true, "draft_max": 6.497851231888989, "shore_power_req": false, "CIO_index_max": null}, {"id": "C037", "category": "standard", "technician_capacity_req": 38, "DP_class_req": 2, "Hs_req": 1.1921616703109348, "crane_capacity_req": 5.024697288517867, "gangway_req": true, "draft_max": 6.410129640353301, "shore_power_req": false, "CIO_index_max": null}, {"id": "C038", "category": "standard", "technician_capacity_req": 66, "DP_class_req": 3, "Hs_req": 1.6480290963777364, "crane_capacity_req": 5.37759639381226, "gangway_req": true, "draft_max": 5.085293534570483, "shore_power_req": false, "CIO_index_max": null}, {"id": "C039", "category": "standard", "technician_capacity_req": 78, "DP_class_req": 3, "Hs_req": 2.0653286684741166, "crane_capacity_req": 5.163205392502692, "gangway_req": true, "draft_max": 5.5825594710916775, "shore_power_req": false, "CIO_index_max": null}, {"id": "C040", "category": "standard", "technician_capacity_req": 66, "DP_class_req": 2, "Hs_req": 2.5644086832578203, "crane_capacity_req": 6.0, "gangway_req": false, "draft_max": 6.368051802962266, "shore_power_req": false, "CIO_index_max": null}, {"id": "C041", "category": "standard", "technician_capacity_req": 58, "DP_class_req": 2, "Hs_req": 1.618722095670783, "crane_capacity_req": 5.669410205450597, "gangway_req": false, "draft_max": 6.209526180051421, "shore_power_req": false, "CIO_index_max": null}, {"id": "C042", "category": "standard", "technician_capacity_req": 65, "DP_class_req": 2, "Hs_req": 2.6615588225611697, "crane_capacity_req": 5.15982809626108, "gangway_req": false, "draft_max": 5.782444746208738, "shore_power_req": false, "CIO_index_max": null}, {"id": "C043", "category": "standard", "technician_capacity_req": 49, "DP_class_req": 2, "Hs_req": 1.8580850720034083, "crane_capacity_req": 4.470063910371324, "gangway_req": true, "draft_max": 6.146294321569143, "shore_power_req": false, "CIO_index_max": null}, {"id": "C044", "category": "standard", "technician_capacity_req": 60, "DP_class_req": 2, "Hs_req": 1.3682929657548348, "crane_capacity_req": 5.448334171223616, "gangway_req": true, "draft_max": 5.20425147705526, "shore_power_req": false, "CIO_index_max": null}, {"id": "C045", "category": "standard", "technician_capacity_req": 69, "DP_class_req": 2, "Hs_req": 1.5737023357370263, "crane_capacity_req": 5.707950391506042, "gangway_req": false, "draft_max": 6.360051705604345, "shore_power_req": false, "CIO_index_max": null}, {"id": "C046", "category": "harsh", "technician_capacity_req": 75, "DP_class_req": 3, "Hs_req": 2.660183673850759, "crane_capacity_req": 5.111482791855789, "gangway_req": true, "draft_max": 5.826781941713964, "shore_power_req": false, "CIO_index_max": null}, {"id": "C047", "category": "harsh", "technician_capacity_req": 73, "DP_class_req": 2, "Hs_req": 2.164936466310604, "crane_capacity_req": 4.706649989625808, "gangway_req": false, "draft_max": 6.26946129258981, "shore_power_req": false, "CIO_index_max": null}, {"id": "C048", "category": "harsh", "technician_capacity_req": 90, "DP_class_req": 3, "Hs_req": 3.175726371901055, "crane_capacity_req": 15.65530620069217, "gangway_req": true, "draft_max": 5.0, "shore_power_req": false, "CIO_index_max": null}, {"id": "C049", "category": "harsh", "technician_capacity_req": 77, "DP_class_req": 2, "Hs_req": 2.4150543040158623, "crane_capacity_req": 4.449011671536317, "gangway_req": true, "draft_max": 5.493885370181196, "shore_power_req": false, "CIO_index_max": null}, {"id": "C050", "category": "harsh", "technician_capacity_req": 65, "DP_class_req": 3, "Hs_req": 2.7601386066423976, "crane_capacity_req": 5.232612151234229, "gangway_req": true, "draft_max": 5.79891674012409, "shore_power_req": false, "CIO_index_max": null}, {"id": "C051", "category": "harsh", "technician_capacity_req": 74, "DP_class_req": 3, "Hs_req": 2.789512355230361, "crane_capacity_req": 19.885980211390354, "gangway_req": true, "draft_max": 5.771062152251046, "shore_power_req": false, "CIO_index_max": null}, {"id": "C052", "category": "harsh", "technician_capacity_req": 65, "DP_class_req": 3, "Hs_req": 2.558227825052262, "crane_capacity_req": 24.48855712607222, "gangway_req": true, "draft_max": 5.280159303215011, "shore_power_req": false, "CIO_index_max": null}, {"id": "C053", "category": "harsh", "technician_capacity_req": 56, "DP_class_req": 2, "Hs_req": 1.6164358319989556, "crane_capacity_req": 5.318674049165112, "gangway_req": false, "draft_max": 6.717797676876738, "shore_power_req": true, "CIO_index_max": null}, {"id": "C054", "category": "harsh", "technician_capacity_req": 65, "DP_class_req": 2, "Hs_req": 2.695239216828682, "crane_capacity_req": 4.843359788680759, "gangway_req": false, "draft_max": 5.518637491867964, "shore_power_req": false, "CIO_index_max": null}, {"id": "C055", "category": "harsh", "technician_capacity_req": 67, "DP_class_req": 3, "Hs_req": 3.2773064551633753, "crane_capacity_req": 8.918912121684931, "gangway_req": true, "draft_max": 5.506848335849189, "shore_power_req": false, "CIO_index_max": null}, {"id": "C056", "category": "harsh", "technician_capacity_req": 75, "DP_class_req": 3, "Hs_req": 2.616988883627926, "crane_capacity_req": 4.807430033987467, "gangway_req": true, "draft_max": 5.458642865311741, "shore_power_req": false, "CIO_index_max": null}, {"id": "C057", "category": "harsh", "technician_capacity_req": 72, "DP_class_req": 3, "Hs_req": 3.024775052837103, "crane_capacity_req": 5.84033344994319, "gangway_req": true, "draft_max": 6.093452607045181, "shore_power_req": false, "CIO_index_max": null}, {"id": "C058", "category": "harsh", "technician_capacity_req": 86, "DP_class_req": 3, "Hs_req": 2.585291509152885, "crane_capacity_req": 11.138762270265557, "gangway_req": true, "draft_max": 6.1767235690272235, "shore_power_req": false, "CIO_index_max": null}, {"id": "C059", "category": "harsh", "technician_capacity_req": 77, "DP_class_req": 3, "Hs_req": 2.6121622573993197, "crane_capacity_req": 4.246259504014619, "gangway_req": true, "draft_max": 5.206432280280506, "shore_power_req": true, "CIO_index_max": null}, {"id": "C060", "category": "harsh", "technician_capacity_req": 77, "DP_class_req": 3, "Hs_req": 3.0132118727342267, "crane_capacity_req": 5.408625071470574, "gangway_req": true, "draft_max": 5.664892782113714, "shore_power_req": false, "CIO_index_max": null}, {"id": "C061", "category": "harsh", "technician_capacity_req": 85, "DP_class_req": 3, "Hs_req": 2.603973789927413, "crane_capacity_req": 5.203803437417362, "gangway_req": true, "draft_max": 5.685397673655032, "shore_power_req": false, "CIO_index_max": null}, {"id": "C062", "category": "harsh", "technician_capacity_req": 71, "DP_class_req": 3, "Hs_req": 2.7216891820509015, "crane_capacity_req": 4.7323105619647485, "gangway_req": true, "draft_max": 5.361081088691051, "shore_power_req": false, "CIO_index_max": null}, {"id": "C063", "category": "harsh", "technician_capacity_req": 85, "DP_class_req": 3, "Hs_req": 2.903421344059048, "crane_capacity_req": 10.427502532888616, "gangway_req": true, "draft_max": 5.474033595671422, "shore_power_req": false, "CIO_index_max": null}, {"id": "C064", "category": "harsh", "technician_capacity_req": 39, "DP_class_req": 2, "Hs_req": 1.8698959642998692, "crane_capacity_req": 6.0, "gangway_req": true, "draft_max": 5.798489123529109, "shore_power_req": false, "CIO_index_max": null}, {"id": "C065", "category": "harsh", "technician_capacity_req": 64, "DP_class_req": 2, "Hs_req": 1.4675926962677144, "crane_capacity_req": 4.864256628370306, "gangway_req": false, "draft_max": 5.688522426370553, "shore_power_req": false, "CIO_index_max": null}, {"id": "C066", "category": "harsh", "technician_capacity_req": 78, "DP_class_req": 3, "Hs_req": 2.524013046358407, "crane_capacity_req": 5.600995610864798, "gangway_req": true, "draft_max": 6.059230668761072, "shore_power_req": false, "CIO_index_max": null}, {"id": "C067", "category": "harsh", "technician_capacity_req": 73, "DP_class_req": 2, "Hs_req": 1.9626464473902083, "crane_capacity_req": 6.0, "gangway_req": true, "draft_max": 6.496048134438567, "shore_power_req": false, "CIO_index_max": null}, {"id": "C068", "category": "harsh", "technician_capacity_req": 71, "DP_class_req": 3, "Hs_req": 3.06688405349778, "crane_capacity_req": 4.930861475182987, "gangway_req": true, "draft_max": 5.042050606463255, "shore_power_req": false, "CIO_index_max": null}, {"id": "C069", "category": "harsh", "technician_capacity_req": 47, "DP_class_req": 2, "Hs_req": 2.702712402934746, "crane_capacity_req": 8.0, "gangway_req": false, "draft_max": 5.926820623967125, "shore_power_req": false, "CIO_index_max": null}, {"id": "C070", "category": "harsh", "technician_capacity_req": 70, "DP_class_req": 3, "Hs_req": 2.3962312679015776, "crane_capacity_req": 5.624109784539431, "gangway_req": true, "draft_max": 5.924690688852044, "shore_power_req": false, "CIO_index_max": null}, {"id": "C071", "category": "green", "technician_capacity_req": 47, "DP_class_req": 2, "Hs_req": 2.337232471110438, "crane_capacity_req": 4.747883451785573, "gangway_req": false, "draft_max": 5.751070964765492, "shore_power_req": true, "CIO_index_max": 0.0003906943287826345}, {"id": "C072", "category": "green", "technician_capacity_req": 37, "DP_class_req": 2, "Hs_req": 1.2788288527412481, "crane_capacity_req": 4.740678833542172, "gangway_req": false, "draft_max": 6.8290764240958, "shore_power_req": true, "CIO_index_max": 0.0004220764350569862}, {"id": "C073", "category": "green", "technician_capacity_req": 38, "DP_class_req": 2, "Hs_req": 1.8738261277445594, "crane_capacity_req": 11.524071624148762, "gangway_req": false, "draft_max": 6.264314656135825, "shore_power_req": false, "CIO_index_max": 0.0004386327453754712}, {"id": "C074", "category": "green", "technician_capacity_req": 60, "DP_class_req": 2, "Hs_req": 1.993506794330506, "crane_capacity_req": 4.5061914038408, "gangway_req": false, "draft_max": 5.591638795014993, "shore_power_req": true, "CIO_index_max": 0.00043748039637065686}, {"id": "C075", "category": "green", "technician_capacity_req": 35, "DP_class_req": 1, "Hs_req": 0.9451796797798937, "crane_capacity_req": 4.466575412476058, "gangway_req": false, "draft_max": 7.330907072988277, "shore_power_req": true, "CIO_index_max": 0.00043758102901028396}, {"id": "C076", "category": "green", "technician_capacity_req": 35, "DP_class_req": 1, "Hs_req": 0.6410459446017143, "crane_capacity_req": 5.687560772652187, "gangway_req": false, "draft_max": 6.0064373717061725, "shore_power_req": true, "CIO_index_max": 0.0004472266078247085}, {"id": "C077", "category": "green", "technician_capacity_req": 53, "DP_class_req": 2, "Hs_req": 1.89052473716777, "crane_capacity_req": 5.6577558894021625, "gangway_req": true, "draft_max": 5.339893740980179, "shore_power_req": true, "CIO_index_max": 0.00034573734194153085}, {"id": "C078", "category": "green", "technician_capacity_req": 50, "DP_class_req": 2, "Hs_req": 1.277579069552057, "crane_capacity_req": 4.430419209843687, "gangway_req": false, "draft_max": 6.360191541889518, "shore_power_req": true, "CIO_index_max": 0.000451477082122984}, {"id": "C079", "category": "green", "technician_capacity_req": 41, "DP_class_req": 2, "Hs_req": 1.470997430426173, "crane_capacity_req": 5.482681776039958, "gangway_req": false, "draft_max": 6.2611012522902545, "shore_power_req": true, "CIO_index_max": 0.00039700199107171934}, {"id": "C080", "category": "green", "technician_capacity_req": 38, "DP_class_req": 1, "Hs_req": 1.234680179368952, "crane_capacity_req": 4.037897175627889, "gangway_req": false, "draft_max": 6.784578099486811, "shore_power_req": false, "CIO_index_max": 0.00045398176867022925}, {"id": "C081", "category": "green", "technician_capacity_req": 38, "DP_class_req": 2, "Hs_req": 1.9859942238773576, "crane_capacity_req": 6.0, "gangway_req": true, "draft_max": 6.045975260978243, "shore_power_req": true, "CIO_index_max": 0.0004160708687347625}, {"id": "C082", "category": "green", "technician_capacity_req": 35, "DP_class_req": 1, "Hs_req": 1.0462754329105923, "crane_capacity_req": 5.095496359717026, "gangway_req": false, "draft_max": 6.293864906208929, "shore_power_req": true, "CIO_index_max": 0.00047650215607895343}, {"id": "C083", "category": "green", "technician_capacity_req": 44, "DP_class_req": 2, "Hs_req": 1.3603618251597607, "crane_capacity_req": 4.184822410498143, "gangway_req": false, "draft_max": 6.167602101570543, "shore_power_req": true, "CIO_index_max": 0.0004386237843453898}, {"id": "C084", "category": "green", "technician_capacity_req": 35, "DP_class_req": 1, "Hs_req": 0.5212677004382105, "crane_capacity_req": 3.66115339490766, "gangway_req": false, "draft_max": 6.83830443395342, "shore_power_req": true, "CIO_index_max": 0.00042666466014871824}, {"id": "C085", "category": "green", "technician_capacity_req": 72, "DP_class_req": 2, "Hs_req": 2.0256960294412902, "crane_capacity_req": 5.432621884757209, "gangway_req": false, "draft_max": 6.446116451764876, "shore_power_req": true, "CIO_index_max": 0.0004274775133675258}, {"id": "C086", "category": "green", "technician_capacity_req": 35, "DP_class_req": 2, "Hs_req": 1.301701507407389, "crane_capacity_req": 6.0, "gangway_req": false, "draft_max": 6.275208009355712, "shore_power_req": true, "CIO_index_max": 0.0004232668425587315}, {"id": "C087", "category": "green", "technician_capacity_req": 48, "DP_class_req": 2, "Hs_req": 1.2872061279446465, "crane_capacity_req": 8.0, "gangway_req": true, "draft_max": 5.725444676908056, "shore_power_req": true, "CIO_index_max": 0.0004198273671556112}, {"id": "C088", "category": "green", "technician_capacity_req": 41, "DP_class_req": 2, "Hs_req": 1.222534049490001, "crane_capacity_req": 4.614424710331058, "gangway_req": true, "draft_max": 6.602234139995458, "shore_power_req": true, "CIO_index_max": 0.00044177636025700533}, {"id": "C089", "category": "green", "technician_capacity_req": 36, "DP_class_req": 2, "Hs_req": 1.8255862493805632, "crane_capacity_req": 10.578619971273687, "gangway_req": false, "draft_max": 5.697884050883396, "shore_power_req": true, "CIO_index_max": 0.00040488083228731956}, {"id": "C090", "category": "green", "technician_capacity_req": 42, "DP_class_req": 2, "Hs_req": 1.2231254175299617, "crane_capacity_req": 4.3020167860580045, "gangway_req": false, "draft_max": 7.149818814283491, "shore_power_req": true, "CIO_index_max": 0.0004686879256632567}, {"id": "C091", "category": "special", "technician_capacity_req": 42, "DP_class_req": 2, "Hs_req": 1.080042685943104, "crane_capacity_req": 5.529243291318476, "gangway_req": true, "draft_max": 6.567321858232344, "shore_power_req": true, "CIO_index_max": null}, {"id": "C092", "category": "special", "technician_capacity_req": 60, "DP_class_req": 3, "Hs_req": 2.8087629180342963, "crane_capacity_req": 5.801047238590904, "gangway_req": true, "draft_max": 5.280643836560695, "shore_power_req": false, "CIO_index_max": null}, {"id": "C093", "category": "special", "technician_capacity_req": 75, "DP_class_req": 2, "Hs_req": 2.4386723605094796, "crane_capacity_req": 4.976969982048583, "gangway_req": false, "draft_max": 5.964966588265382, "shore_power_req": false, "CIO_index_max": null}, {"id": "C094", "category": "special", "technician_capacity_req": 55, "DP_class_req": 2, "Hs_req": 2.105585951821696, "crane_capacity_req": 4.647489761314524, "gangway_req": true, "draft_max": 6.661877726090688, "shore_power_req": false, "CIO_index_max": null}, {"id": "C095", "category": "special", "technician_capacity_req": 87, "DP_class_req": 3, "Hs_req": 3.040410503084649, "crane_capacity_req": 11.681582816004212, "gangway_req": true, "draft_max": 5.533582324146712, "shore_power_req": false, "CIO_index_max": null}, {"id": "C096", "category": "special", "technician_capacity_req": 49, "DP_class_req": 2, "Hs_req": 1.836640411206235, "crane_capacity_req": 5.353128050113525, "gangway_req": false, "draft_max": 6.516757655296739, "shore_power_req": false, "CIO_index_max": null}, {"id": "C097", "category": "special", "technician_capacity_req": 39, "DP_class_req": 2, "Hs_req": 1.5630145690724624, "crane_capacity_req": 5.169281732910042, "gangway_req": true, "draft_max": 7.156413014842649, "shore_power_req": false, "CIO_index_max": null}, {"id": "C098", "category": "special", "technician_capacity_req": 59, "DP_class_req": 2, "Hs_req": 2.1815034563952045, "crane_capacity_req": 4.550543681567028, "gangway_req": true, "draft_max": 5.696982521702408, "shore_power_req": false, "CIO_index_max": null}, {"id": "C099", "category": "special", "technician_capacity_req": 53, "DP_class_req": 3, "Hs_req": 2.5241124867084914, "crane_capacity_req": 24.987104157699772, "gangway_req": true, "draft_max": 6.205846011335082, "shore_power_req": false, "CIO_index_max": null}, {"id": "C100", "category": "special", "technician_capacity_req": 46, "DP_class_req": 2, "Hs_req": 1.2678631550110913, "crane_capacity_req": 5.97239866696304, "gangway_req": false, "draft_max": 6.285126668575192, "shore_power_req": false, "CIO_index_max": null}], "constants": {"C_STEEL": 40.0, "C_KW": 8.0, "C_GEN": 15000.0, "C_THR": 8000.0, "C_BAT_PER_KWH": 5.0}, "defaults": {"sfoc_by_mode_g_per_kwh": {"Transit": 223, "DP": 250, "Standby": 273, "Port": 260}, "fuel_key": "MGO", "locked_design_keys": ["BASE"], "baseline_sfoc_by_mode_g_per_kwh": {"Transit": 223, "DP": 250, "Standby": 273, "Port": 260}, "power_fractions_by_mode": {"DP": 0.1549, "Standby": 0.1025, "Port": 0.0464}, "transit_hotel_fraction": 0.0753, "transit_propulsion_kw_default": 1314.0, "h_lim_dp": 2.5, "dp_class_screening_score": {"1": 0.7, "2": 1.0, "3": 1.1}}};
+</script>
+<script>
+// report/dashboard.js
+//
+// Dashboard logic and KPI calculations for the vessel design evaluation.
+// Reads the global `DATA` object injected by dashboard_template.html.
+/* global DATA */
+
+const MODES = ["Transit", "DP", "Standby", "Port"];
+const LOCKED_DESIGNS = new Set(
+  (DATA.defaults && DATA.defaults.locked_design_keys) ? DATA.defaults.locked_design_keys : []
+);
+// Power fractions for DP, Standby, Port — mirrors POWER_FRACTIONS_BY_MODE in design.py.
+// Transit is handled separately via transit_propulsion_kw + hotel fraction.
+const POWER_FRACTIONS = DATA.defaults.power_fractions_by_mode || {
+  DP: 0.1549, Standby: 0.1025, Port: 0.0464
+};
+// Transit decomposition constants — mirror design.py
+const TRANSIT_HOTEL_FRACTION = DATA.defaults.transit_hotel_fraction;
+const TRANSIT_PROPULSION_KW_DEFAULT = DATA.defaults.transit_propulsion_kw_default;
+
+const DESIGN_COLOURS = {
+  "BASE": "#444444", "D1": "#7b8fc9", "D2": "#d08a2e", "D3": "#b07aa1",
+};
+const el = (id) => document.getElementById(id);
+const mk = (tag, cls) => { const x = document.createElement(tag); if (cls) x.className = cls; return x; };
+
+
+// ─── OR model constants — must match robustness.py ───────────────────────────
+
+const DP_CLASS_SCREENING_SCORE = DATA.defaults.dp_class_screening_score || {
+  "1": 0.70,
+  "2": 1.00,
+  "3": 1.10
+};
+
+function calculateHLim(design) {
+  // Design-specific DP Hs limit. Defaults to VARD input if not set.
+  const hLim = Number(design.h_lim_dp || DATA.defaults.h_lim_dp || 2.5);
+  return hLim > 0 ? hLim : Number(DATA.defaults.h_lim_dp || 2.5);
+}
+
+function dpCapacityKw(design) {
+  const totalGenKw = Number(design.total_generator_kw || 0.0);
+  const fraction = Number(design.thruster_power_fraction || 0.65);
+  return totalGenKw * fraction;
+}
+
+// Lanczos approximation for Gamma function.
+// Needed for Weibull moment fitting in the browser.
+function gamma(z) {
+  const p = [
+    676.5203681218851,
+   -1259.1392167224028,
+    771.32342877765313,
+   -176.61502916214059,
+     12.507343278686905,
+     -0.13857109526572012,
+      9.9843695780195716e-6,
+      1.5056327351493116e-7
+  ];
+
+  if (z < 0.5) {
+    return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  }
+
+  z -= 1;
+  let x = 0.99999999999980993;
+
+  for (let i = 0; i < p.length; i++) {
+    x += p[i] / (z + i + 1);
+  }
+
+  const t = z + p.length - 0.5;
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+}
+
+// ─── KPI helpers ─────────────────────────────────────────────────────────────
+
+function weibullShapeFromCV(cv) {
+  function cvForK(k) {
+    const g1 = gamma(1.0 + 1.0 / k);
+    const g2 = gamma(1.0 + 2.0 / k);
+    return Math.sqrt(g2 / (g1 * g1) - 1.0);
+  }
+
+  let low = 0.2;
+  let high = 20.0;
+
+  // CV decreases with increasing k.
+  for (let i = 0; i < 100; i++) {
+    const mid = 0.5 * (low + high);
+    if (cvForK(mid) > cv) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return 0.5 * (low + high);
+}
+
+function weibullParamsFromMeanStd(mean, std) {
+  const mu = Math.max(Number(mean), 1e-9);
+  const sigma = Math.max(Number(std), 1e-9);
+
+  const cv = sigma / mu;
+  const k = weibullShapeFromCV(cv);
+  const lambda = mu / gamma(1.0 + 1.0 / k);
+
+  return { k, lambda };
+}
+
+function computePex(design, scenario) {
+  const H_lim = calculateHLim(design);
+  const params = weibullParamsFromMeanStd(scenario.hs_mean, scenario.hs_std);
+
+  const p_ex = Math.exp(-Math.pow(H_lim / params.lambda, params.k));
+  return Math.max(0.0, Math.min(1.0, p_ex));
+}
+
+function dpClassIndex(design, baseline) {
+  const sDesign = DP_CLASS_SCREENING_SCORE[String(design.dp_class)];
+  const sBase = DP_CLASS_SCREENING_SCORE[String(baseline.dp_class)];
+
+  const designScore = sDesign !== undefined ? Number(sDesign) : 1.0;
+  const baseScore = sBase !== undefined ? Number(sBase) : 1.0;
+
+  if (baseScore <= 0.0) return 1.0;
+  return designScore / baseScore;
+}
+
+function redundancyIndex(design, baseline) {
+  const thrBase = Number(baseline.n_thrusters || 0);
+  const genBase = Number(baseline.n_gensets || 0);
+
+  if (thrBase <= 0 || genBase <= 0) return 1.0;
+
+  const thrRatio = Number(design.n_thrusters || 0) / thrBase;
+  const genRatio = Number(design.n_gensets || 0) / genBase;
+
+  return Math.sqrt(Math.max(0.0, thrRatio * genRatio));
+}
+
+function powerIndex(design, baseline) {
+  const baseDp = dpCapacityKw(baseline);
+  if (baseDp <= 0.0) return 1.0;
+  return dpCapacityKw(design) / baseDp;
+}
+
+function computeTechnicalRobustness(design) {
+  const baseline = state.designs["BASE"];
+
+  const rDp  = dpClassIndex(design, baseline);
+  const rRed = redundancyIndex(design, baseline);
+  const rPow = powerIndex(design, baseline);
+
+  const wDp  = 0.4;
+  const wRed = 0.3;
+  const wPow = 0.3;
+
+  return (
+    Math.pow(rDp,  wDp)
+    * Math.pow(rRed, wRed)
+    * Math.pow(rPow, wPow)
+  );
+}
+
+function computeEnvironmentalOperability(design, scenario) {
+  return 1.0 - computePex(design, scenario);
+}
+
+function computeOperationalRobustness(design, scenario) {
+  return computeEnvironmentalOperability(design, scenario) * computeTechnicalRobustness(design);
+}
+
+function computeRobustnessIndex(design, sc) {
+  const baseRob   = computeOperationalRobustness(state.designs["BASE"], sc);
+  const designRob = computeOperationalRobustness(design, sc);
+  if (baseRob <= 0) return 0;
+  return designRob / baseRob;
+}
+
+function hoursByMode(sc, design) {
+  const pex     = computePex(design, sc);
+  const total   = sc.total_hours;
+  const dp_base = total * sc.share_dp;
+
+  return {
+    Transit: total   * sc.share_transit,
+    DP:      dp_base * (1.0 - pex),
+    Port:    total   * sc.share_port,
+    Standby: dp_base * pex,
+  };
+}
+
+function emissionFactor(fuelKey) {
+  const f = DATA.fuels[fuelKey];
+  return f ? Number(f.emission_factor) : 0.0;
+}
+
+function computeACIO(sc, design, params) {
+  const h  = hoursByMode(sc, design);
+  const ef = emissionFactor(params.fuel_key);
+  const SP = Number(design.gt_t);
+  let acio = 0.0;
+  for (const m of MODES) {
+    if (m === "Port" && params.uses_shore_power) continue;
+    const sfoc_kg = Number(params.sfoc_by_mode_g_per_kwh[m]) / 1000.0;
+    const co2_t   = (Number(design.power[m]) * Number(h[m]) * sfoc_kg * ef) / 1000.0;
+    acio += co2_t / SP;
+  }
+  return acio;
+}
+
+function computeACIOIndex(sc, design, params) {
+  const baseACIO   = computeACIO(sc, state.designs["BASE"], state.paramsByDesign["BASE"]);
+  const designACIO = computeACIO(sc, design, params);
+  if (designACIO <= 0) return 0;
+  return baseACIO / designACIO;
+}
+
+function computeMEE(sc, design, params) {
+  const h = hoursByMode(sc, design);
+  let missionFuelKg = 0.0;
+  for (const m of ["DP", "Transit"]) {
+    const sfoc_kg = Number(params.sfoc_by_mode_g_per_kwh[m]) / 1000.0;
+    missionFuelKg += Number(design.power[m]) * Number(h[m]) * sfoc_kg;
+  }
+  if (missionFuelKg <= 0) return 0;
+  return Number(design.technician_capacity) * Number(h["DP"]) / missionFuelKg;
+}
+
+function computeMEEIndex(sc, design, params) {
+  const muiDesign   = computeMEE(sc, design, params);
+  const muiBaseline = computeMEE(sc, state.designs["BASE"], state.paramsByDesign["BASE"]);
+  if (muiBaseline <= 0) return 0;
+  return muiDesign / muiBaseline;
+}
+
+const C_STEEL=DATA.constants.C_STEEL, C_KW=DATA.constants.C_KW, C_GEN=DATA.constants.C_GEN,
+      C_THR=DATA.constants.C_THR,     C_BAT_PER_KWH=DATA.constants.C_BAT_PER_KWH;
+
+const DP_CLASS_CAPEX_FACTOR = { "1": 1.00, "2": 1.08, "3": 1.20 };
+
+function computeCapex(design) {
+  const P_installed = Number(design.total_generator_kw || 0);
+  const E_bat       = design.battery_included ? Number(design.battery_capacity_kwh || 0) : 0;
+  const capex_unscaled = C_STEEL*design.steel_weight_t
+                       + C_KW*P_installed
+                       + C_GEN*design.n_gensets
+                       + C_THR*design.n_thrusters
+                       + C_BAT_PER_KWH*E_bat;
+  const f_dp = DP_CLASS_CAPEX_FACTOR[String(design.dp_class)] ?? 1.0;
+  return capex_unscaled * f_dp;
+}
+
+const BASELINE_CAPEX = computeCapex(DATA.designs["BASE"]);
+function computeCapexIndex(design) { return BASELINE_CAPEX / computeCapex(design); }
+
+function computeCIO(sc, design, params) {
+  const h  = hoursByMode(sc, design);
+  const ef = emissionFactor(params.fuel_key);
+  const SP = Number(design.gt_t);
+  let cio = 0.0;
+  for (const m of MODES) {
+    const t_h = Number(h[m]);
+    if (t_h <= 0) continue;
+    if (m === "Port" && params.uses_shore_power) continue;
+    const sfoc_kg = Number(params.sfoc_by_mode_g_per_kwh[m]) / 1000.0;
+    const co2_t   = (Number(design.power[m]) * t_h * sfoc_kg * ef) / 1000.0;
+    cio += co2_t / (SP * t_h);
+  }
+  return cio;
+}
+
+function isFeasible(design, contract, cio_value) {
+  if (design.dp_class < contract.DP_class_req) return false;
+  if ((design.technician_capacity ?? 0) < contract.technician_capacity_req) return false;
+  const H_lim = calculateHLim(design);
+  if (H_lim < contract.Hs_req) return false;
+  if ((design.crane_capacity_t ?? 0) < contract.crane_capacity_req) return false;
+  if (contract.gangway_req && !design.has_gangway) return false;
+  if (design.draft_m > contract.draft_max) return false;
+  if (contract.shore_power_req && !design.supports_shore_power) return false;
+  if (contract.CIO_index_max !== null && contract.CIO_index_max !== undefined && cio_value !== undefined) {
+    if (cio_value > contract.CIO_index_max) return false;
+  }
+  return true;
+}
+
+function computeFlexibility(sc, design, params) {
+  const contracts = DATA.contracts;
+  if (!contracts || contracts.length === 0) return 0;
+  const cio = computeCIO(sc, design, params);
+  const n_feasible = contracts.filter(c => isFeasible(design, c, cio)).length;
+  return n_feasible / contracts.length;
+}
+
+function computeCFIndex(sc, design, params) {
+  const F_design = computeFlexibility(sc, design, params);
+  const F_base   = computeFlexibility(sc, state.designs["BASE"], state.paramsByDesign["BASE"]);
+  if (F_base <= 0) return 0;
+  return F_design / F_base;
+}
+
+// ─── Transit power helpers ───────────────────────────────────────────────────
+
+function computeTransitPower(design) {
+  // Mirrors design.py :: power_levels_kw["Transit"]
+  // Transit = propulsion (from S/P-curve) + hotel/aux.
+  // Hotel/aux is scaled from the transit hotel/aux ratio derived from the baseline vessel.
+  const propulsion = Number(design.transit_propulsion_kw || TRANSIT_PROPULSION_KW_DEFAULT);
+  const hotel      = Number(design.total_generator_kw || 0) * TRANSIT_HOTEL_FRACTION;
+  return Math.round(propulsion + hotel);
+}
+
+function computeTransitHotel(design) {
+  return Math.round(Number(design.total_generator_kw || 0) * TRANSIT_HOTEL_FRACTION);
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+const state = {
+  scenario: Object.keys(DATA.scenarios)[0],
+  selected: new Set(Object.keys(DATA.designs)),
+  paramsByDesign: {},
+  designs: JSON.parse(JSON.stringify(DATA.designs))
+};
+
+for (const dKey of Object.keys(DATA.designs)) {
+  state.paramsByDesign[dKey] = {
+    fuel_key: DATA.defaults.fuel_key,
+    uses_shore_power: Boolean(DATA.designs[dKey].supports_shore_power),
+    sfoc_by_mode_g_per_kwh: Object.fromEntries(
+      MODES.map(m => [m, Number(DATA.defaults.sfoc_by_mode_g_per_kwh[m])])
+    ),
+  };
+}
+for (const dKey of LOCKED_DESIGNS) {
+  if (!state.paramsByDesign[dKey]) continue;
+  state.paramsByDesign[dKey] = {
+    fuel_key: DATA.defaults.fuel_key,
+    uses_shore_power: Boolean(DATA.designs[dKey].supports_shore_power),
+    sfoc_by_mode_g_per_kwh: Object.fromEntries(
+      MODES.map(m => [m, Number(DATA.defaults.baseline_sfoc_by_mode_g_per_kwh[m])])
+    ),
+  };
+}
+
+// ─── UI builders ─────────────────────────────────────────────────────────────
+
+function buildTopControls() {
+  const left = el("topbarLeft");
+  left.innerHTML = "";
+  const wrapper = mk("div");
+  wrapper.style.cssText = "display:grid; grid-template-columns:1fr minmax(900px,900px); gap:12px; align-items:stretch; margin-bottom:6px;";
+  const leftCol = mk("div");
+  leftCol.style.cssText = "display:flex; flex-direction:column; justify-content:space-between; gap:0px; max-width:500px; min-height:170px;";
+  const title = mk("h1"); title.textContent = "Design Evaluation"; leftCol.appendChild(title);
+  const controls = mk("div", "controls");
+  const sel = mk("select");
+  for (const s of Object.keys(DATA.scenarios)) {
+    const o = mk("option"); o.value = s; o.textContent = DATA.scenarios[s].name; sel.appendChild(o);
+  }
+  sel.value = state.scenario;
+  sel.onchange = () => { state.scenario = sel.value; updateAllViews(); };
+  controls.appendChild(sel);
+
+  const list = mk("div", "design-choices");
+  for (const d of Object.keys(DATA.designs)) {
+    const cb = mk("input"); cb.type = "checkbox"; cb.checked = state.selected.has(d);
+    cb.onchange = () => { cb.checked ? state.selected.add(d) : state.selected.delete(d); updateAllViews(); };
+    list.appendChild(cb);
+    const label = mk("span"); label.textContent = d; list.appendChild(label);
+  }
+  controls.appendChild(list);
+  leftCol.appendChild(controls);
+  const tabsDiv = mk("div", "tabs"); tabsDiv.id = "tabs"; tabsDiv.style.marginTop = "6px";
+  leftCol.appendChild(tabsDiv);
+  const stackCol = mk("div"); stackCol.id = "stackColContainer";
+  stackCol.style.cssText = "border:1px solid #ccc; background:#fff; padding:8px 12px; box-sizing:border-box; margin-top:10px;";
+  const stackTitle = mk("p"); stackTitle.style.cssText = "font-size:20px; font-weight:600; margin:0 0 5px 0; display:flex; align-items:center; gap:8px;";
+  stackTitle.innerHTML = "Operational profile <span id='standbyInfoBtn' style='display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:11px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;'>i</span>";
+  const stackCanvas = document.createElement("canvas"); stackCanvas.id = "stackCanvas"; stackCanvas.style.cssText = "display:block; width:100%;";
+  stackCol.appendChild(stackTitle); stackCol.appendChild(stackCanvas);
+  wrapper.appendChild(leftCol); wrapper.appendChild(stackCol); left.appendChild(wrapper);
+}
+
+function buildTabs() {
+  const tabs = document.getElementById("tabs"); tabs.innerHTML = "";
+  function makeButton(label, tabId) {
+    const b = document.createElement("button"); b.textContent = label; b.className = "tab-btn";
+    b.onclick = () => { activate(tabId); document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active")); b.classList.add("active"); };
+    tabs.appendChild(b);
+  }
+  makeButton("Dashboard", "tab_dashboard");
+  for (const d of Object.keys(DATA.designs)) makeButton(d, "tab_" + d);
+}
+
+function activate(id) {
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+  const x = el(id); if (x) x.classList.add("active");
+  const stackCol = el("stackColContainer");
+  if (stackCol) stackCol.style.display = (id === "tab_dashboard") ? "" : "none";
+  if (id === "tab_dashboard") {
+    renderDashboardOutputs();
+    requestAnimationFrame(() => { renderStackedBar(); renderDotPlot(); renderSlopeChart(); });
+  }
+}
+
+function buildDashboard() {
+  const div = el("tab_dashboard"); div.innerHTML = "";
+  const topRow = mk("div");
+  topRow.style.cssText = "display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start; margin-top:14px;";
+  const tableWrap = mk("div"); tableWrap.style.cssText = "display:flex; flex-direction:column;";
+  const table = mk("table");
+  table.innerHTML = "<thead><tr><th>Design</th><th>OR Index [-]</th><th>ACIO Index [-]</th><th>MEE Index [-]</th><th>CAPEX Index [-]</th><th>CF [-]</th></tr></thead><tbody id='dashBody'></tbody>";
+  tableWrap.appendChild(table);
+  const legend = mk("div"); legend.id = "abbrevLegend";
+  legend.style.cssText = "border:1px solid #ccc; background:#fff; padding:10px 14px; font-size:18px; line-height:2.0; white-space:nowrap;";
+  legend.innerHTML = "<div style='font-weight:700; font-size:19px; margin-bottom:6px;'>Abbreviations</div>"
++ "<div style='display:flex; align-items:baseline; gap:6px;'><span style='background:#fff3e0; color:#b45309; font-size:12px; font-weight:700; padding:1px 5px; border-radius:3px; flex-shrink:0;'>IDX</span><span><b>OR</b> – Operational Robustness Index</span><span id='orInfoBtn' style='display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#fde8c8;color:#b45309;font-size:11px;font-weight:700;cursor:pointer;margin-left:5px;line-height:1;flex-shrink:0;'>i</span></div>"
++ "<div style='display:flex; align-items:baseline; gap:6px;'><span style='background:#fff3e0; color:#b45309; font-size:12px; font-weight:700; padding:1px 5px; border-radius:3px; flex-shrink:0;'>IDX</span><span><b>ACIO</b> – Annual Carbon Intensity Offshore</span><span id='acioInfoBtn' style='display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#fde8c8;color:#b45309;font-size:11px;font-weight:700;cursor:pointer;margin-left:5px;line-height:1;flex-shrink:0;'>i</span></div>"
++ "<div style='display:flex; align-items:baseline; gap:6px;'><span style='background:#fff3e0; color:#b45309; font-size:12px; font-weight:700; padding:1px 5px; border-radius:3px; flex-shrink:0;'>IDX</span><span><b>MEE</b> – Mission Energy Efficiency</span><span id='meeInfoBtn' style='display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#fde8c8;color:#b45309;font-size:11px;font-weight:700;cursor:pointer;margin-left:5px;line-height:1;flex-shrink:0;'>i</span></div>"
++ "<div style='display:flex; align-items:baseline; gap:6px;'><span style='background:#fff3e0; color:#b45309; font-size:12px; font-weight:700; padding:1px 5px; border-radius:3px; flex-shrink:0;'>IDX</span><span><b>CAPEX</b> – Capital Expenditure</span><span id='capexInfoBtn' style='display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#fde8c8;color:#b45309;font-size:11px;font-weight:700;cursor:pointer;margin-left:5px;line-height:1;flex-shrink:0;'>i</span></div>"
++ "<div style='display:flex; align-items:baseline; gap:6px;'><span style='background:#e8f0ff; color:#2d5cc7; font-size:12px; font-weight:700; padding:1px 5px; border-radius:3px; flex-shrink:0;'>ABS</span><span><b>CF</b> – Contract Flexibility</span><span id='cfInfoBtn' style='display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:11px;font-weight:700;cursor:pointer;margin-left:5px;line-height:1;flex-shrink:0;'>i</span></div>"
++ "<div style='margin-top:7px; padding-top:6px; border-top:1px solid #e0e0e0; font-size:15px; color:#888;'>ABS = absolute value [-] &nbsp;·&nbsp; IDX = index, BASE = 1.00</div>";
+  topRow.appendChild(tableWrap); topRow.appendChild(legend); div.appendChild(topRow);
+
+  const bottom = mk("div");
+  bottom.style.cssText = "display:flex; flex-direction:column; gap:10px; margin-top:8px;";
+
+  const dotWrap = mk("div");
+  dotWrap.style.cssText = "background:#fff; border:1px solid #ccc; padding:10px 14px;";
+  const dotTitle = mk("p");
+  dotTitle.style.cssText = "font-size:20px; font-weight:600; color:#333; margin:0 0 6px 0;";
+  dotTitle.textContent = "Index values";
+  const dotCanvas = document.createElement("canvas");
+  dotCanvas.id = "dotCanvas";
+  dotCanvas.style.cssText = "display:block; width:100%; height:350px;";
+  dotWrap.appendChild(dotTitle);
+  dotWrap.appendChild(dotCanvas);
+
+  const row2 = mk("div");
+  row2.style.cssText = "display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; width:100%;";
+
+  const slopeWrap = mk("div");
+  slopeWrap.style.cssText = "background:#fff; border:1px solid #ccc; padding:10px 14px; width:100%; box-sizing:border-box; min-width:0;";
+  const slopeTitleRow = mk("div");
+  slopeTitleRow.style.cssText = "display:flex; align-items:center; gap:10px; margin-bottom:6px;";
+  const slopeTitleLabel = mk("p");
+  slopeTitleLabel.style.cssText = "font-size:20px; font-weight:600; color:#333; margin:0;";
+  slopeTitleLabel.textContent = "Scenario A vs B:";
+  const slopeKpiSel = document.createElement("select");
+  slopeKpiSel.id = "slopeKpiSel";
+  slopeKpiSel.style.cssText = "padding:4px 8px; border:1px solid #ccc; font-size:16px; width:auto;";
+  ["OR", "ACIO", "MEE"].forEach(k => {
+    const o = document.createElement("option"); o.value = k; o.textContent = k + " Index"; slopeKpiSel.appendChild(o);
+  });
+  slopeKpiSel.onchange = () => renderSlopeChart();
+  slopeTitleRow.appendChild(slopeTitleLabel);
+  slopeTitleRow.appendChild(slopeKpiSel);
+  const slopeCanvas = document.createElement("canvas");
+  slopeCanvas.id = "slopeCanvas";
+  slopeCanvas.style.cssText = "display:block; width:100%; height:330px;";
+  slopeWrap.appendChild(slopeTitleRow);
+  slopeWrap.appendChild(slopeCanvas);
+
+  row2.appendChild(dotWrap);
+  row2.appendChild(slopeWrap);
+  bottom.appendChild(row2);
+  div.appendChild(bottom);
+}
+
+function buildDesignTabs() {
+  const container = el("designTabs"); container.innerHTML = "";
+  const fuelOptions = Object.keys(DATA.fuels).map(fKey => `<option value="${fKey}">${DATA.fuels[fKey].label || fKey}</option>`).join("");
+
+  for (const dKey of Object.keys(DATA.designs)) {
+    const design   = state.designs[dKey];
+    const isLocked = LOCKED_DESIGNS.has(dKey);
+    const div = mk("div", "tab-content"); div.id = "tab_" + dKey;
+
+    // Build power rows — Transit gets special decomposition treatment
+    const powerRowsHTML = MODES.map((m, i) => {
+      if (m === "Transit") {
+        return `
+        <div class="form-row">
+          <label>Power Transit [kW]
+            <span id='powerInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;line-height:1;flex-shrink:0;'>i</span>
+          </label>
+          <span id="power_display_transit_${dKey}" style="font-weight:600;color:#444;">—</span>
+        </div>
+        <div class="transit-sub form-row">
+          <label style="font-size:16px;color:#666;">
+            Propulsion [kW]
+            <span id='transitPropInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:9px;font-weight:700;cursor:pointer;margin-left:3px;line-height:1;flex-shrink:0;'>i</span>
+          </label>
+          <input type="number" id="transit_prop_${dKey}" value="${design.transit_propulsion_kw}" min="0" step="10" ${isLocked ? "disabled" : ""}/>
+        </div>
+        <div class="transit-sub form-row">
+          <label style="font-size:16px;color:#666;">
+            Hotel &amp; aux [kW]
+            <span id='transitHotelInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:9px;font-weight:700;cursor:pointer;margin-left:3px;line-height:1;flex-shrink:0;'>i</span>
+          </label>
+          <span id="transit_hotel_display_${dKey}" style="font-weight:600;color:#888;font-size:16px;">—</span>
+        </div>`;
+      }
+      return `<div class="form-row">
+        <label>Power ${m} [kW]
+          <span id='powerModeInfoBtn_${m}_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;line-height:1;flex-shrink:0;'>i</span>
+        </label>
+        <span id="power_display_${m.toLowerCase()}_${dKey}" style="font-weight:600;color:#444;">—</span>
+      </div>`;
+    }).join("");
+
+    div.innerHTML = `
+      <h2>${dKey}: <input type="text" id="name_${dKey}" value="${design.name}"
+        style="font-size:26px;font-weight:600;border:none;background:transparent;border-bottom:1px solid #ccc;width:480px;"/></h2>
+      <div style="margin-bottom:10px; font-size:19px; color:#444; display:flex; gap:24px; flex-wrap:wrap; padding:10px 14px; background:#fff; border:1px solid #ccc;">
+        <span>OR Index: <b id="rob_${dKey}">—</b></span>
+        <span>ACIO Index: <b id="acio_${dKey}">—</b></span>
+        <span>MEE Index: <b id="mee_${dKey}">—</b></span>
+        <span>CAPEX Index: <b id="capex_${dKey}">—</b></span>
+        <span>CF: <b id="cf_${dKey}">—</b></span>
+      </div>
+      <div class="design-grid">
+        <div class="box">
+          <h3>Hull &amp; Geometry</h3>
+          <div class="form-row"><label>DWT [t] <span id='dwtInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;line-height:1;flex-shrink:0;'>i</span></label><input type="number" id="dwt_${dKey}" value="${design.dwt_t}" min="0"/></div>
+          <div class="form-row"><label>GT [-]</label><input type="number" id="gt_${dKey}" value="${design.gt_t}" min="0"/></div>
+          <div class="form-row"><label>Steel weight [t]</label><input type="number" id="steel_${dKey}" value="${design.steel_weight_t}" min="0"/></div>
+          <div class="form-row"><label>LOA [m]</label><input type="number" id="loa_${dKey}" value="${design.loa_m.toFixed(1)}" min="0" step="0.1"/></div>
+          <div class="form-row"><label>Beam [m]</label><input type="number" id="beam_${dKey}" value="${design.beam_m.toFixed(1)}" min="0" step="0.1"/></div>
+          <div class="form-row"><label>Draft [m]</label><input type="number" id="draft_${dKey}" value="${design.draft_m.toFixed(2)}" min="0" step="0.01"/></div>
+        </div>
+        <div class="box">
+          <h3>Propulsion, Power &amp; DP</h3>
+          <div class="form-row"><label>Generators</label><input type="number" id="gen_${dKey}" value="${design.n_gensets}" min="0"/></div>
+          <div class="form-row"><label>Thrusters</label><input type="number" id="thr_${dKey}" value="${design.n_thrusters}" min="0"/></div>
+          <div class="form-row"><label>DP class</label><input type="number" id="dp_${dKey}" value="${design.dp_class}" min="1" max="3" step="1"/></div>
+          <div class="form-row"><label>Generator capacity [kW]</label><input type="number" id="gen_kw_${dKey}" value="${design.total_generator_kw}" min="0"/></div>
+          <div class="form-row">
+            <label>DP available [kW] (×0.65)
+              <span id='dpAvailInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;line-height:1;flex-shrink:0;'>i</span>
+            </label>
+            <span id="dp_avail_display_${dKey}" style="font-weight:600;color:#444;">—</span>
+          </div>
+          <div class="form-row">
+            <label>DP Hs limit [m]
+              <span id='hlimInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;line-height:1;flex-shrink:0;'>i</span>
+            </label>
+            <input type="number" id="hlim_${dKey}" value="${Number(design.h_lim_dp || DATA.defaults.h_lim_dp || 2.5).toFixed(1)}" min="0" step="0.1" ${isLocked ? "disabled" : ""}/>
+          </div>
+          <div class="battery-row">
+            <label>Battery</label>
+            <div class="battery-controls">
+              <input type="checkbox" id="bat_${dKey}" ${design.battery_included ? "checked" : ""}/>
+              <input type="number" id="bat_kwh_${dKey}" value="${design.battery_capacity_kwh ?? 0}" min="0" step="50"/>
+              <span style="color:#666; font-size:14px;">kWh</span>
+            </div>
+          </div>
+          ${powerRowsHTML}
+        </div>
+        <div class="box">
+          <h3>Fuel, Emissions &amp; Crew</h3>
+          <div class="form-row"><label>Fuel</label><select class="fuel-select" id="fuel_${dKey}">${fuelOptions}</select></div>
+          ${MODES.map(m => `<div class="form-row"><label>SFOC ${m} [g/kWh]</label><input type="number" id="sfoc_${m.toLowerCase()}_${dKey}" min="0" step="1"/></div>`).join("")}
+          <div class="form-row"><label>Technician capacity</label><input type="number" id="technician_capacity_${dKey}" value="${design.technician_capacity}" min="0" step="1"/></div>
+          <div class="form-row"><label>CIO [tCO&#x2082;/GT·h] <span id='cioInfoBtn_${dKey}' style='display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#c8d8f0;color:#2d5cc7;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;line-height:1;flex-shrink:0;'>i</span></label><span id="cio_display_${dKey}" style="font-weight:600;color:#444;">—</span></div>
+        </div>
+        <div class="box">
+          <h3>Mission Equipment</h3>
+          <div class="form-row"><label>Crane capacity [t]</label><input type="number" id="crane_${dKey}" value="${design.crane_capacity_t ?? 0}" min="0" step="1"/></div>
+          <div class="form-row-inline"><label>Gangway (W2W)</label><input type="checkbox" id="gangway_${dKey}" ${design.has_gangway ? "checked" : ""}/></div>
+          <div class="form-row-inline"><label>Shore power in port</label><input type="checkbox" id="shore_${dKey}" ${design.supports_shore_power ? "checked" : ""}/></div>
+        </div>
+      </div>`;
+
+    container.appendChild(div);
+
+    const p = state.paramsByDesign[dKey];
+    const d = state.designs[dKey];
+
+    // SFOC inputs
+    for (const m of MODES) {
+      const inp = div.querySelector(`#sfoc_${m.toLowerCase()}_${dKey}`);
+      inp.value = p.sfoc_by_mode_g_per_kwh[m]; inp.disabled = isLocked;
+      const sfocHandler = () => {
+        if (isLocked) return;
+        const v = Number(inp.value);
+        if (!Number.isNaN(v) && v >= 0) { p.sfoc_by_mode_g_per_kwh[m] = v; updateAllViews(); }
+      };
+      inp.addEventListener("input", sfocHandler);
+      inp.addEventListener("change", sfocHandler);
+    }
+
+    // Name
+    const nameInput = div.querySelector(`#name_${dKey}`);
+    nameInput.disabled = isLocked;
+    nameInput.addEventListener("input", () => { if (!isLocked) { d.name = nameInput.value; updateAllViews(); } });
+
+    // Numeric bindings
+    const bindNum = (inputId, field) => {
+      const inp = div.querySelector(`#${inputId}_${dKey}`);
+      if (!inp) return;
+      inp.disabled = isLocked;
+      const handler = () => {
+        if (isLocked) return;
+        const v = Number(String(inp.value).replace(",", "."));
+        if (!Number.isNaN(v) && v >= 0) { d[field] = v; updateAllViews(); }
+      };
+      inp.addEventListener("input", handler);
+      inp.addEventListener("change", handler);
+    };
+    bindNum("dwt",   "dwt_t");
+    bindNum("gt",    "gt_t");
+    bindNum("dp",    "dp_class");
+    bindNum("steel", "steel_weight_t");
+    bindNum("gen",   "n_gensets");
+    bindNum("thr",   "n_thrusters");
+    bindNum("technician_capacity", "technician_capacity");
+    bindNum("gen_kw", "total_generator_kw");
+    bindNum("hlim", "h_lim_dp");
+    bindNum("crane", "crane_capacity_t");
+    bindNum("loa",   "loa_m");
+    bindNum("beam",  "beam_m");
+    bindNum("draft", "draft_m");
+
+    // Transit propulsion input — redigerbar for ikke-låste design
+    if (!isLocked) {
+      const transitPropInp = div.querySelector(`#transit_prop_${dKey}`);
+      if (transitPropInp) {
+        const handler = () => {
+          const v = Number(transitPropInp.value);
+          if (!Number.isNaN(v) && v >= 0) { d.transit_propulsion_kw = v; updateAllViews(); }
+        };
+        transitPropInp.addEventListener("input", handler);
+        transitPropInp.addEventListener("change", handler);
+      }
+    }
+
+    const gangwayCb = div.querySelector(`#gangway_${dKey}`);
+    gangwayCb.disabled = isLocked;
+    gangwayCb.addEventListener("change", () => { if (!isLocked) { d.has_gangway = gangwayCb.checked; updateAllViews(); } });
+
+    const bat = div.querySelector(`#bat_${dKey}`);
+    bat.disabled = isLocked; bat.checked = d.battery_included;
+    bat.addEventListener("change", () => { if (!isLocked) { d.battery_included = bat.checked; updateAllViews(); } });
+
+    const batKwh = div.querySelector(`#bat_kwh_${dKey}`);
+    batKwh.disabled = isLocked;
+    batKwh.value = d.battery_capacity_kwh ?? 0;
+    batKwh.addEventListener("input", () => {
+      if (isLocked) return;
+      const v = Number(batKwh.value);
+      d.battery_capacity_kwh = Number.isFinite(v) && v >= 0 ? v : 0;
+      updateAllViews();
+    });
+
+    const shoreCb = div.querySelector(`#shore_${dKey}`);
+    shoreCb.disabled = isLocked;
+    shoreCb.checked = d.supports_shore_power;
+    let batBeforeShore = d.battery_included;
+    shoreCb.addEventListener("change", () => {
+      if (isLocked) return;
+      d.supports_shore_power = shoreCb.checked;
+      p.uses_shore_power     = shoreCb.checked;
+      if (shoreCb.checked) {
+        batBeforeShore = d.battery_included;
+        d.battery_included = true;
+        bat.checked = true;
+        bat.disabled = true;
+      } else {
+        d.battery_included = batBeforeShore;
+        bat.checked = batBeforeShore;
+        bat.disabled = false;
+      }
+      updateAllViews();
+    });
+    if (d.supports_shore_power && !isLocked) {
+      bat.checked = true;
+      bat.disabled = true;
+    }
+
+    const fuelSel = div.querySelector(`#fuel_${dKey}`);
+    fuelSel.value = p.fuel_key; fuelSel.disabled = isLocked;
+    fuelSel.addEventListener("change", () => { if (!isLocked) { p.fuel_key = fuelSel.value; updateAllViews(); } });
+
+    // Info buttons
+    const designInfoDefs = [
+      {
+        id: `dwtInfoBtn_${dKey}`,
+        title: "DWT [t]",
+        text: "Deadweight tonnage. Shown here only to give a sense of the vessel size. It does not feed into any KPI or index calculation and changing it does not affect any computed values."
+      },
+      {
+        id: `dpAvailInfoBtn_${dKey}`,
+        title: "DP Available Power",
+        text: "65% of generator capacity used as a DP power proxy in the technical robustness score. It is not a verified DP capability calculation."
+      },
+      {
+        id: `powerInfoBtn_${dKey}`,
+        title: "Power Transit [kW]",
+        text: "Total transit power demand = propulsion + hotel/aux. Set the propulsion component below."
+      },
+      {
+        id: `transitPropInfoBtn_${dKey}`,
+        title: "Transit Propulsion Power",
+        text: "Propulsion power at service speed, derived from the design-specific S/P-curve. Enter the value from the S/P-curve at the intended service speed. Default: 1 314 kW, calibrated against baseline vessel sensor data at 10 knots."
+      },
+      {
+        id: `transitHotelInfoBtn_${dKey}`,
+        title: "Transit Hotel and Auxiliary Power",
+        text: "Non-propulsion transit load covering HVAC, lighting and auxiliary systems. Calculated automatically as a fixed fraction of generator capacity (7.5%), calibrated against baseline vessel at design speed."
+      },
+      ...[
+        { mode:"DP",      basis:"861 / 5560 = 15.5%", note:"Representative station-keeping load, not maximum thrust capacity. Maximum DP capacity is shown separately above." },
+        { mode:"Standby", basis:"570 / 5560 = 10.3%", note:"Operating load during periods when wave conditions exceed the vessel's operational limit. Lower than DP since thrusters are mostly idle." },
+        { mode:"Port",    basis:"258 / 5560 = 4.6%",  note:"Hotel and auxiliary load only, no propulsion. Excluded from emission calculations when shore power is enabled." },
+      ].map(cfg => ({
+        id: `powerModeInfoBtn_${cfg.mode}_${dKey}`,
+        title: `Power ${cfg.mode} [kW]`,
+        text: `Power ${cfg.mode} = fixed share of total generator capacity (${cfg.basis}). Separate from transit propulsion and hotel/aux. ${cfg.note}`
+      })),
+      {
+        id: `hlimInfoBtn_${dKey}`,
+        title: "DP Hs Limit",
+        text: "Design-specific limiting significant wave height for the reference DP operation. Default is 2.5 m based on VARD input. Changing this value affects environmental operability, operational profile, contract flexibility and OR."
+      },
+      {
+        id: `cioInfoBtn_${dKey}`,
+        title: "Carbon Intensity Offshore (CIO)",
+        text: "Emission intensity per unit vessel size and operating hour. Used as a contract constraint in the flexibility model. Green contracts specify a maximum CIO threshold, so a lower value improves contract flexibility."
+      },
+    ];
+    for (const def of designInfoDefs) {
+      const btn = div.querySelector(`#${def.id}`);
+      if (!btn) continue;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const existing = document.getElementById("kpiTooltip");
+        if (existing) {
+          const alreadyOpen = existing.style.display !== "none" && existing.dataset.source === def.id;
+          existing.style.display = "none";
+          if (alreadyOpen) return;
+          existing.dataset.source = def.id;
+          existing.innerHTML = `<div style='font-weight:700;font-size:16px;margin-bottom:6px;color:#2d5cc7;'>${def.title}</div><p style='margin:0;'>${def.text}</p>`;
+          existing.style.display = "block";
+          const rect = btn.getBoundingClientRect();
+          const tipW = 320, tipH = existing.offsetHeight || 100;
+          let left = rect.right + 8;
+          if (left + tipW > window.innerWidth - 8) left = rect.left - tipW - 8;
+          let top = rect.top - 10;
+          if (top + tipH > window.innerHeight - 8) top = window.innerHeight - tipH - 8;
+          existing.style.left = left + "px";
+          existing.style.top = Math.max(8, top) + "px";
+        }
+      });
+    }
+  }
+}
+
+// ─── Render functions ─────────────────────────────────────────────────────────
+
+function renderDashboardOutputs() {
+  const dashBody = el("dashBody"); if (!dashBody) return;
+  const sc = DATA.scenarios[state.scenario]; dashBody.innerHTML = "";
+  const selectedKeys = Object.keys(DATA.designs).filter(k => state.selected.has(k));
+  const rows = selectedKeys.map(dKey => {
+    const d = state.designs[dKey], p = state.paramsByDesign[dKey];
+    return { dKey, capexIndex: computeCapexIndex(d), rob: computeRobustnessIndex(d,sc), acio: computeACIOIndex(sc,d,p), mee: computeMEEIndex(sc,d,p), cf: computeFlexibility(sc,d,p) };
+  });
+  function cellColour(value, allValues) {
+    const max=Math.max(...allValues), min=Math.min(...allValues);
+    if (max===min) return "";
+    if (value===max) return "background:#c8f5c8;";
+    if (value===min) return "background:#f5c8c8;";
+    return "";
+  }
+  const nr = rows.filter(r => r.dKey !== "BASE");
+  for (const row of rows) {
+    const tr = mk("tr"); if (row.dKey==="BASE") tr.className = "base-row";
+    const colour = DESIGN_COLOURS[row.dKey] || "#444";
+    const nameStyle = row.dKey==="BASE" ? "" : `background:${colour};color:#fff;font-weight:700;`;
+    tr.innerHTML = `<th style="${nameStyle}">${row.dKey}</th>`
+      + `<td style="${cellColour(row.rob,        nr.map(r=>r.rob))}">${row.rob.toFixed(2)}</td>`
+      + `<td style="${cellColour(row.acio,       nr.map(r=>r.acio))}">${row.acio.toFixed(2)}</td>`
+      + `<td style="${cellColour(row.mee,        nr.map(r=>r.mee))}">${row.mee.toFixed(2)}</td>`
+      + `<td style="${cellColour(row.capexIndex, nr.map(r=>r.capexIndex))}">${row.capexIndex.toFixed(2)}</td>`
+      + `<td style="${cellColour(row.cf,         nr.map(r=>r.cf))}">${row.cf.toFixed(2)}</td>`;
+    dashBody.appendChild(tr);
+  }
+}
+
+function renderDesignTab(dKey) {
+  const sc=DATA.scenarios[state.scenario], d=state.designs[dKey], p=state.paramsByDesign[dKey];
+  const isLocked = LOCKED_DESIGNS.has(dKey);
+
+  // Keep dp_capacity_kw in sync
+  d.dp_capacity_kw = dpCapacityKw(d);
+
+  // Recompute power levels:
+  // Transit = transit_propulsion_kw + hotel_fraction × generator
+  // DP, Standby, Port = fixed fractions of generator
+  if (d.total_generator_kw) {
+    d.power["Transit"] = computeTransitPower(d);
+    for (const m of ["DP", "Standby", "Port"]) {
+      d.power[m] = Math.round(Number(d.total_generator_kw) * (POWER_FRACTIONS[m] || 0));
+    }
+  }
+
+  // Update power display spans
+  for (const m of MODES) {
+    const span = el(`power_display_${m.toLowerCase()}_${dKey}`);
+    if (span) span.textContent = (d.power[m] || 0).toFixed(0) + " kW";
+  }
+
+  // Transit decomposition displays
+  const hotelEl = el(`transit_hotel_display_${dKey}`);
+  if (hotelEl) {
+    hotelEl.textContent = computeTransitHotel(d).toFixed(0) + " kW";
+  }
+  // Keep locked baseline propulsion input shown as a disabled input field.
+  if (isLocked) {
+    const propInput = el(`transit_prop_${dKey}`);
+    if (propInput) {
+      propInput.value = (Number(d.transit_propulsion_kw) || TRANSIT_PROPULSION_KW_DEFAULT).toFixed(0);
+    }
+  }
+
+  const dpAvailEl = el(`dp_avail_display_${dKey}`);
+  if (dpAvailEl) dpAvailEl.textContent = d.dp_capacity_kw > 0 ? d.dp_capacity_kw.toFixed(0) + " kW" : "—";
+
+  const set = (id, val) => { const e=el(id); if(e) e.textContent=val; };
+  set(`capex_${dKey}`, computeCapexIndex(d).toFixed(2));
+  set(`rob_${dKey}`,   computeRobustnessIndex(d,sc).toFixed(2));
+  set(`acio_${dKey}`,  computeACIOIndex(sc,d,p).toFixed(2));
+  set(`mee_${dKey}`,   computeMEEIndex(sc,d,p).toFixed(2));
+  set(`cf_${dKey}`,    computeFlexibility(sc,d,p).toFixed(2));
+  const cio = computeCIO(sc, d, p);
+  set(`cio_display_${dKey}`, cio.toFixed(6));
+}
+
+function renderAllDesignTabs() {
+  for (const dKey of Object.keys(DATA.designs)) renderDesignTab(dKey);
+}
+
+// ─── Slope chart ─────────────────────────────────────────────────────────────
+
+function renderSlopeChart() {
+  const canvas = el("slopeCanvas"); if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.max(canvas.parentElement.offsetWidth || 600, 300) - 28, H = 330;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px"; canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx = canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const scKeys = Object.keys(DATA.scenarios);
+  if (scKeys.length < 2) { ctx.fillStyle="#999"; ctx.font="21px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("Need at least 2 scenarios",W/2,H/2); return; }
+  const kpiSel = el("slopeKpiSel"), kpi = kpiSel ? kpiSel.value : "ACIO";
+  function getKpiVal(scKey, dKey) {
+    const sc=DATA.scenarios[scKey], d=state.designs[dKey], p=state.paramsByDesign[dKey];
+    switch(kpi) {
+      case "ACIO": return computeACIOIndex(sc,d,p);
+      case "MEE":  return computeMEEIndex(sc,d,p);
+      case "OR":   return computeRobustnessIndex(d,sc);
+      default:     return 1;
+    }
+  }
+  const selectedKeys = Object.keys(DATA.designs).filter(k => state.selected.has(k));
+  if (!selectedKeys.length) return;
+  const groups = selectedKeys.map(dKey => ({ key:dKey, valA:getKpiVal(scKeys[0],dKey), valB:getKpiVal(scKeys[1],dKey) }));
+  const scaleVals = groups.flatMap(g=>[g.valA,g.valB,1.0]);
+  const dataMin=Math.min(...scaleVals), dataMax=Math.max(...scaleVals);
+  const spread=Math.max(dataMax-dataMin,0.02), pad=spread*0.25;
+  const yMin=dataMin-pad, yMax=dataMax+pad;
+  const padL=110,padR=110,padT=46,padB=52, plotW=W-padL-padR, plotH=H-padT-padB;
+  const xA=padL, xB=padL+plotW;
+  function valToY(v) { return padT+plotH*(1-(v-yMin)/(yMax-yMin)); }
+  for (let i=0;i<=5;i++) {
+    const v=yMin+(yMax-yMin)*(i/5), y=valToY(v);
+    ctx.strokeStyle="#ececec"; ctx.lineWidth=0.8; ctx.beginPath(); ctx.moveTo(xA,y); ctx.lineTo(xB,y); ctx.stroke();
+    ctx.fillStyle="#bbb"; ctx.font="17px Arial"; ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(v.toFixed(2),xA-6,y);
+  }
+  [xA,xB].forEach((x,i) => {
+    ctx.strokeStyle="#ccc"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+plotH); ctx.stroke();
+    ctx.fillStyle="#333"; ctx.font="bold 19px Arial"; ctx.textAlign=i===0?"left":"right"; ctx.textBaseline="bottom";
+    ctx.fillText(i===0?"Scenario A":"Scenario B", x+(i===0?4:-4), padT-22);
+    ctx.fillStyle="#888"; ctx.font="16px Arial";
+    ctx.fillText(DATA.scenarios[scKeys[i]].name.replace(/Scenario [AB]: /,""), x+(i===0?4:-4), padT-4);
+  });
+  if (1.0>=yMin && 1.0<=yMax) {
+    const baseY=valToY(1.0); ctx.strokeStyle="#bbb"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(xA,baseY); ctx.lineTo(xB,baseY); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#bbb"; ctx.font="17px Arial"; ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText("BASE 1.000",xA-6,baseY);
+  }
+  const drawOrder = groups.filter(g=>g.key!=="BASE");
+  function nudgeLabels(positions) {
+    const minGap=22;
+    const sorted=positions.map((p,i)=>({orig:p,i})).sort((a,b)=>a.orig-b.orig);
+    const out=sorted.map(s=>s.orig);
+    for (let iter=0;iter<40;iter++) {
+      let moved=false;
+      for (let i=1;i<out.length;i++) { if(out[i]-out[i-1]<minGap) { const push=(minGap-(out[i]-out[i-1]))/2; out[i-1]-=push; out[i]+=push; moved=true; } }
+      if(!moved) break;
+    }
+    const result=new Array(positions.length); sorted.forEach((s,si)=>{result[s.i]=out[si];});
+    return result;
+  }
+  const baseY = (1.0>=yMin && 1.0<=yMax) ? valToY(1.0) : null;
+  function nudgeWithBase(positions, baseY) {
+    if (baseY===null) return nudgeLabels(positions);
+    const withBase=[...positions, baseY];
+    const nudged=nudgeLabels(withBase);
+    return nudged.slice(0, positions.length);
+  }
+  const nudgedYA=nudgeWithBase(drawOrder.map(g=>valToY(g.valA)), baseY);
+  const nudgedYB=nudgeWithBase(drawOrder.map(g=>valToY(g.valB)), baseY);
+  drawOrder.forEach(g => {
+    const colour=DESIGN_COLOURS[g.key]||"#888";
+    ctx.beginPath(); ctx.moveTo(xA,valToY(g.valA)); ctx.lineTo(xB,valToY(g.valB));
+    ctx.strokeStyle=colour; ctx.lineWidth=2.8; ctx.stroke();
+    [{x:xA,y:valToY(g.valA)},{x:xB,y:valToY(g.valB)}].forEach(pt => {
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,6,0,2*Math.PI); ctx.fillStyle=colour; ctx.fill();
+      ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke();
+    });
+  });
+  ctx.font="bold 19px Arial";
+  drawOrder.forEach((g,i) => {
+    const colour=DESIGN_COLOURS[g.key]||"#888"; ctx.fillStyle=colour;
+    ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillText(`${g.key}  ${g.valA.toFixed(2)}`,xA-6,nudgedYA[i]);
+    ctx.textAlign="left"; ctx.fillText(`${g.valB.toFixed(2)}  ${g.key}`,xB+6,nudgedYB[i]);
+  });
+  let lx=padL; const legendY=H-20; ctx.font="19px Arial"; ctx.textBaseline="middle";
+  selectedKeys.filter(k=>k!=="BASE").forEach(dKey => {
+    const colour=DESIGN_COLOURS[dKey]||"#888"; ctx.fillStyle=colour; ctx.fillRect(lx,legendY-5,14,10);
+    ctx.fillStyle="#333"; ctx.textAlign="left"; ctx.fillText(dKey,lx+18,legendY); lx+=46;
+  });
+  ctx.fillStyle="#aaa"; ctx.font="17px Arial"; ctx.textAlign="left"; ctx.fillText("BASE = 1.000 (reference)",lx+8,legendY);
+}
+
+// ─── Dot plot ─────────────────────────────────────────────────────────────────
+
+function renderDotPlot() {
+  const canvas = el("dotCanvas"); if (!canvas) return;
+  const dpr=window.devicePixelRatio||1;
+  const W=Math.max(canvas.parentElement.offsetWidth||600,320)-28, H=350;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px"; canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const sc=DATA.scenarios[state.scenario], kpis=["OR","ACIO","MEE","CAPEX","CF"];
+  const selectedKeys=Object.keys(DATA.designs).filter(k=>state.selected.has(k));
+  if (!selectedKeys.length) return;
+  const series=selectedKeys.map(dKey => {
+    const d=state.designs[dKey], p=state.paramsByDesign[dKey];
+    return { key:dKey, vals:[computeRobustnessIndex(d,sc),computeACIOIndex(sc,d,p),computeMEEIndex(sc,d,p),computeCapexIndex(d),computeCFIndex(sc,d,p)] };
+  });
+  const allVals=series.flatMap(s=>s.vals);
+  const dataMin=Math.min(...allVals), dataMax=Math.max(...allVals);
+  const pad=Math.max((dataMax-dataMin)*0.18,0.06);
+  const axisMin=Math.max(0,dataMin-pad), axisMax=dataMax+pad;
+  const padL=90,padR=16,padT=16,padB=52, plotW=W-padL-padR, plotH=H-padT-padB;
+  const rowH=plotH/kpis.length, dotR=7;
+  function valToX(v) { return padL+((v-axisMin)/(axisMax-axisMin))*plotW; }
+  kpis.forEach((_,ki) => { ctx.fillStyle=ki%2===0?"#fafafa":"#f3f4f6"; ctx.fillRect(padL,padT+ki*rowH,plotW,rowH); });
+  const baseX=valToX(1.0);
+  ctx.strokeStyle="#888"; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(baseX,padT); ctx.lineTo(baseX,padT+plotH); ctx.stroke(); ctx.setLineDash([]);
+  const tickStep=(axisMax-axisMin)<=0.6?0.1:0.2;
+  const tickStart=Math.ceil(axisMin/tickStep)*tickStep;
+  const tickXs=[];
+  ctx.font="18px Arial"; ctx.fillStyle="#aaa"; ctx.textAlign="center";
+  for (let t=tickStart;t<=axisMax+0.001;t=Math.round((t+tickStep)*100)/100) {
+    const x=valToX(t); tickXs.push({x,label:t.toFixed(2)}); ctx.strokeStyle="#e8e8e8"; ctx.lineWidth=0.8;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+plotH); ctx.stroke();
+    if (Math.abs(x-baseX)>22) ctx.fillText(t.toFixed(2),x,padT+plotH+4);
+  }
+  ctx.fillStyle="#777"; ctx.font="bold 18px Arial"; ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText("BASE",baseX,padT+plotH+26);
+  kpis.forEach((kpi,ki) => {
+    const cy=padT+ki*rowH+rowH/2;
+    ctx.fillStyle="#222"; ctx.font="bold 20px Arial"; ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(kpi,padL-8,cy);
+    if (ki>0) { ctx.strokeStyle="#e0e0e0"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(padL,padT+ki*rowH); ctx.lineTo(W-padR,padT+ki*rowH); ctx.stroke(); }
+    const rowSeries=series.map(s=>({key:s.key,val:s.vals[ki]})).sort((a,b)=>a.val-b.val);
+    rowSeries.forEach((s,rank) => {
+      const colour=DESIGN_COLOURS[s.key]||"#888", x=valToX(s.val), isBase=s.key==="BASE";
+      if (!isBase) { ctx.strokeStyle=colour+"55"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(baseX,cy); ctx.lineTo(x,cy); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(x,cy,isBase?dotR-1:dotR,0,2*Math.PI); ctx.fillStyle=colour; ctx.fill();
+      ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke();
+      const above=rank%2===0;
+      ctx.font=isBase?"bold 18px Arial":"18px Arial"; ctx.fillStyle=colour; ctx.textAlign="center";
+      ctx.textBaseline=above?"bottom":"top";
+      ctx.fillText(s.val.toFixed(2),x,cy+(above?-(dotR+5):(dotR+5)));
+    });
+  });
+  let lx=8; const legendY=H-18; ctx.font="19px Arial"; ctx.textBaseline="middle";
+  const legendOrder = [...selectedKeys.filter(k=>k!=="BASE"), ...selectedKeys.filter(k=>k==="BASE")];
+  legendOrder.forEach(dKey => {
+    const colour=DESIGN_COLOURS[dKey]||"#888"; ctx.beginPath(); ctx.arc(lx+6,legendY,5,0,2*Math.PI);
+    ctx.fillStyle=colour; ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle="#333"; ctx.textAlign="left"; ctx.fillText(dKey,lx+14,legendY); lx+=42;
+  });
+}
+
+// ─── Stacked bar ─────────────────────────────────────────────────────────────
+
+function renderStackedBar() {
+  const canvas=el("stackCanvas"); if (!canvas) return;
+  const sc=DATA.scenarios[state.scenario];
+  const selectedKeys=Object.keys(DATA.designs).filter(k=>state.selected.has(k));
+  if (!selectedKeys.length) return;
+  const dpr=window.devicePixelRatio||1;
+  const W=Math.max(canvas.parentElement.offsetWidth||700,200)-24;
+  const rowH=20,gap=3,padL=52,padR=6,padT=4,padB=18;
+  const H=padT+selectedKeys.length*(rowH+gap)-gap+padB+4;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px"; canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const barW=W-padL-padR, total=sc.total_hours;
+  const MODE_COLOURS={Transit:"#456c9d",DP:"#548e62",Port:"#cbbe93",Standby:"#959a9d"};
+  const modeOrder=["Transit","DP","Port","Standby"];
+  selectedKeys.forEach((dKey,ri) => {
+    const design=state.designs[dKey], h=hoursByMode(sc,design), y=padT+ri*(rowH+gap);
+    const colour=DESIGN_COLOURS[dKey]||"#444"; ctx.fillStyle=colour; ctx.font="bold 18px Arial";
+    ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillText(dKey,padL-4,y+rowH/2);
+    let xCursor=padL;
+    modeOrder.forEach(mode => {
+      const hrs=h[mode]||0, frac=hrs/total, segW=frac*barW;
+      if (segW<1) return;
+      ctx.fillStyle=MODE_COLOURS[mode]; ctx.fillRect(xCursor,y,segW,rowH);
+      if (segW>24) {
+        ctx.fillStyle="#fff"; ctx.font="bold 17px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText(Math.round(frac*100)+"%",xCursor+segW/2,y+rowH/2);
+      }
+      xCursor+=segW;
+    });
+    ctx.strokeStyle="#ccc"; ctx.lineWidth=0.5; ctx.strokeRect(padL,y,barW,rowH);
+  });
+  let lx=padL; const legendY=H-padB/2+2; ctx.font="17px Arial"; ctx.textBaseline="middle";
+  modeOrder.forEach(mode => {
+    ctx.fillStyle=MODE_COLOURS[mode]; ctx.fillRect(lx,legendY-4,9,9);
+    ctx.fillStyle="#333"; ctx.textAlign="left"; ctx.fillText(mode,lx+12,legendY);
+    lx+=ctx.measureText(mode).width+20;
+  });
+}
+
+// ─── Master update ────────────────────────────────────────────────────────────
+
+function updateAllViews() {
+  renderDashboardOutputs();
+  renderAllDesignTabs();
+  if (el("tab_dashboard").classList.contains("active")) {
+    requestAnimationFrame(() => { renderStackedBar(); renderDotPlot(); renderSlopeChart(); });
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+buildTopControls();
+buildTabs();
+buildDashboard();
+buildDesignTabs();
+activate("tab_dashboard");
+document.querySelector(".tab-btn")?.classList.add("active");
+updateAllViews();
+
+// ─── Tooltips ────────────────────────────────────────────────────────────────
+(function() {
+  const TOOLTIPS = {
+    orInfoBtn:      "Operational Robustness Index combines environmental operability and technical robustness relative to the baseline vessel. Environmental operability uses a design-specific DP Hs limit, default 2.5 m from VARD input. Technical robustness is based on DP class, redundancy and DP power proxy.",
+    acioInfoBtn:    "Annual CO2 emission intensity normalised by vessel size. Driven by fuel type, installed power and the assumed operating profile.",
+    meeInfoBtn:     "Operative technician-hours delivered at the installation per kg of fuel consumed in DP and transit. Captures how efficiently mission energy translates into functional output.",
+    capexInfoBtn:   "Capital cost relative to baseline. A value below 1.00 indicates a lower-cost design. Driven by structural weight, installed power, system configuration and DP class.",
+    cfInfoBtn:      "Fraction of a synthetic contract set this design can satisfy. Reflects commercial reach across the SOV/CSOV market segment.",
+    standbyInfoBtn: "Nominal DP hours are reduced by the Weibull exceedance fraction P(Hs > H_lim). These hours are reallocated to standby. H_lim is a design-specific DP criterion, default 2.5 m from VARD input, and can be adjusted on each design page.",
+  };
+  const TITLES = {
+    orInfoBtn:       "Operational Robustness (OR)",
+    acioInfoBtn:     "Annual Carbon Intensity Offshore (ACIO)",
+    meeInfoBtn:      "Mission Energy Efficiency (MEE)",
+    capexInfoBtn:    "Capital Expenditure (CAPEX)",
+    cfInfoBtn:       "Contract Flexibility (CF)",
+    standbyInfoBtn:  "Operational Profile",
+  };
+
+  const tooltip = document.createElement("div");
+  tooltip.id = "kpiTooltip";
+  tooltip.style.cssText = "display:none;position:fixed;z-index:9999;max-width:320px;background:#fff;border:1px solid #b0c4de;border-radius:6px;padding:13px 15px;font-size:15px;line-height:1.6;color:#333;box-shadow:0 4px 16px rgba(0,0,0,0.13);";
+  document.body.appendChild(tooltip);
+
+  let hideTimer;
+  function showTooltip(btn, id) {
+    clearTimeout(hideTimer);
+    tooltip.innerHTML = `<div style='font-weight:700;font-size:16px;margin-bottom:6px;color:#2d5cc7;'>${TITLES[id]}</div><p style='margin:0;'>${TOOLTIPS[id]}</p>`;
+    tooltip.style.display = "block";
+    const rect = btn.getBoundingClientRect();
+    const tipW = 320, tipH = tooltip.offsetHeight || 100;
+    let left = rect.right + 8;
+    if (left + tipW > window.innerWidth - 8) left = rect.left - tipW - 8;
+    let top = rect.top - 10;
+    if (top + tipH > window.innerHeight - 8) top = window.innerHeight - tipH - 8;
+    tooltip.style.left = left + "px";
+    tooltip.style.top = Math.max(8, top) + "px";
+  }
+  function hideTooltip() { hideTimer = setTimeout(() => { tooltip.style.display = "none"; }, 120); }
+
+  document.addEventListener("click", function(e) {
+    let handled = false;
+    for (const id of Object.keys(TOOLTIPS)) {
+      const btn = document.getElementById(id);
+      if (btn && btn.contains(e.target)) {
+        tooltip.style.display === "none" ? showTooltip(btn, id) : (tooltip.style.display = "none");
+        handled = true;
+        break;
+      }
+    }
+    if (!handled && !tooltip.contains(e.target)) tooltip.style.display = "none";
+  });
+  tooltip.addEventListener("mouseenter", () => clearTimeout(hideTimer));
+  tooltip.addEventListener("mouseleave", hideTooltip);
+})();
+
+</script>
+</body>
+</html>
