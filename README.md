@@ -70,7 +70,7 @@ Python 3.11 and the third-party packages imported by the code (notably numpy).
 python main.py
 ```
 
-This generates `report/dashboard.html`; open the file in a web browser to
+This generates `report/dashboard.html`. Open the file in a web browser to
 explore the results.
 
 ## Note
